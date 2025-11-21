@@ -1,18 +1,19 @@
-using System;
-using System.IO;
-using System.Security.Cryptography;
 using System.Text;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Modes;
+using Org.BouncyCastle.Crypto.Paddings;
+using Org.BouncyCastle.Crypto.Parameters;
 
 class Program
 {
     static void Main(string[] args)
     {
-        Console.WriteLine("RAIDOU Remastered Save Converter v1.0 by RikuKH3");
+        Console.WriteLine("RAIDOU Remastered Save Converter v1.1 by RikuKH3");
         Console.WriteLine("------------------------------------------------");
 
         if (args.Length < 1)
         {
-            Console.WriteLine("Usage: "+Path.GetFileName(Environment.GetCommandLineArgs()[0])+" <input file>");
+            Console.WriteLine("Usage: " + Path.GetFileName(Environment.GetCommandLineArgs()[0]) + " <input file>");
             Console.ReadKey();
             return;
         }
@@ -20,7 +21,7 @@ class Program
         string inputFile = args[0];
 
         byte[] key = Encoding.UTF8.GetBytes("O7IbWIUSRrpp7BRCzX6sKZ_St862urrb");
-        byte[] iv  = Encoding.UTF8.GetBytes("Df-5wkTM8hsVkVSDKNXIXwzQy_REkonb");
+        byte[] iv = Encoding.UTF8.GetBytes("Df-5wkTM8hsVkVSDKNXIXwzQy_REkonb");
 
         byte[] fileBytes = File.ReadAllBytes(inputFile);
 
@@ -52,37 +53,20 @@ class Program
 
     static byte[] Encrypt(byte[] data, byte[] key, byte[] iv)
     {
-        using (var rij = new RijndaelManaged())
-        {
-            rij.KeySize = 256;
-            rij.BlockSize = 256;
-            rij.Mode = CipherMode.CBC;
-            rij.Padding = PaddingMode.PKCS7;
-            rij.Key = key;
-            rij.IV = iv;
-
-            using (ICryptoTransform encryptor = rij.CreateEncryptor())
-            {
-                return encryptor.TransformFinalBlock(data, 0, data.Length);
-            }
-        }
+        return ProcessCipher(true, data, key, iv);
     }
 
     static byte[] Decrypt(byte[] data, byte[] key, byte[] iv)
     {
-        using (var rij = new RijndaelManaged())
-        {
-            rij.KeySize = 256;
-            rij.BlockSize = 256;
-            rij.Mode = CipherMode.CBC;
-            rij.Padding = PaddingMode.PKCS7;
-            rij.Key = key;
-            rij.IV = iv;
+        return ProcessCipher(false, data, key, iv);
+    }
 
-            using (ICryptoTransform decryptor = rij.CreateDecryptor())
-            {
-                return decryptor.TransformFinalBlock(data, 0, data.Length);
-            }
-        }
+    static byte[] ProcessCipher(bool encrypt, byte[] data, byte[] key, byte[] iv)
+    {
+        var engine = new RijndaelEngine(256);
+        var blockCipher = new PaddedBufferedBlockCipher(new CbcBlockCipher(engine));
+        var cipherParams = new ParametersWithIV(new KeyParameter(key), iv);
+        blockCipher.Init(encrypt, cipherParams);
+        return blockCipher.DoFinal(data);
     }
 }
